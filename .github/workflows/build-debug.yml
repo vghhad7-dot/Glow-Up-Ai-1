@@ -1,76 +1,28 @@
-name: Build Glow Up Ai debug APK
+cd ~/glow-up-ai
+command -v python3 >/dev/null || pkg install -y python
 
-on:
-  workflow_dispatch:
-  push:
-    branches: [ main ]
-
-jobs:
-  build-debug:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout source and model
-        uses: actions/checkout@v4
-        with:
-          lfs: true
-
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-
-      - name: Set up Android SDK
+python3 - <<'EOF'
+from pathlib import Path
+p = Path(".github/workflows/build-debug.yml")
+s = p.read_text(encoding="utf-8")
+old_setup = """      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install SDK packages
+"""
+old_install = """      - name: Install SDK packages
         run: |
           yes | sdkmanager --licenses > /dev/null
           sdkmanager "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
-
-      - name: Ensure GGUF model is present
+"""
+new_install = """      - name: Install SDK packages
         run: |
-          MODEL="models/qwen2.5-0.5b-instruct-q4_k_m.gguf"
-          if [ ! -f "$MODEL" ]; then
-            mkdir -p models
-            curl -L --fail --retry 3 -o "$MODEL" \
-              https://huggingface.co/Qwen/Qwen2.5-0.5B-Instruct-GGUF/resolve/main/qwen2.5-0.5b-instruct-q4_k_m.gguf
-          fi
-          stat -c 'model size: %s bytes' "$MODEL"
-
-      - name: Make Gradle wrapper executable
-        run: chmod +x android-app/gradlew
-
-      - name: Build debug APK
-        working-directory: android-app
-        run: ./gradlew assembleDebug --no-daemon --stacktrace
-
-      - name: Verify and copy APK
-        run: |
-          APK=$(find android-app/app/build/outputs/apk/debug -name '*.apk' | head -n 1)
-          AAPT="$ANDROID_HOME/build-tools/34.0.0/aapt"
-          "$AAPT" dump badging "$APK" | tee badging.txt
-          if grep -q 'uses-permission:.*android.permission.INTERNET' badging.txt; then
-            echo "ERROR: APK requests INTERNET permission"
-            exit 1
-          fi
-          if ! unzip -l "$APK" | grep -q '\.gguf'; then
-            echo "ERROR: GGUF asset missing from APK"
-            exit 1
-          fi
-          PACKAGE=$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p")
-          cp "$APK" debug.apk
-          SIZE=$(stat -c '%s' debug.apk)
-          echo "PACKAGE=$PACKAGE"
-          echo "SIZE=$SIZE"
-          echo "### Glow Up Ai debug APK" >> "$GITHUB_STEP_SUMMARY"
-          echo "Package: $PACKAGE" >> "$GITHUB_STEP_SUMMARY"
-          echo "Size: $SIZE bytes" >> "$GITHUB_STEP_SUMMARY"
-          echo "Path: debug.apk" >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload debug APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: GlowUpAi-debug
-          path: debug.apk
-          if-no-files-found: error
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-34" "build-tools;34.0.0" "ndk;26.3.11579264" "cmake;3.22.1"
+"""
+if old_setup not in s or old_install not in s:
+    raise SystemExit("pattern not found, file not changed")
+s = s.replace(old_setup, "").replace(old_install, new_install)
+p.write_text(s, encoding="utf-8")
+print("ok")
+EOF
