@@ -1,0 +1,11 @@
+android-app/**/build/
+android-app/.gradle/
+android-app/.cxx/
+android-app/app/.cxx/
+.gradle/
+local.properties
+.idea/
+*.apk
+history.jsonl
+__pycache__/
+android-app/legacy-java/
