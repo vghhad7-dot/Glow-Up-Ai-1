@@ -97,7 +97,7 @@ class MainActivity : Activity() {
         transcript = TextView(this).apply {
             typeface = Typeface.MONOSPACE
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
-            isTextSelectable = true
+            setTextIsSelectable(true)
             textDirection = View.TEXT_DIRECTION_FIRST_STRONG
             textAlignment = View.TEXT_ALIGNMENT_VIEW_START
             setPadding(pad, pad, pad, pad)
